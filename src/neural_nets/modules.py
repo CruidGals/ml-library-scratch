@@ -1,0 +1,116 @@
+import numpy as np
+import param_init as init
+
+# Implementation inspired by PyTorch
+class Module:
+    def __init__(self):
+        # Keep these intermediates for each module
+        self.X: np.ndarray | None = None
+        self.z: np.ndarray | None = None
+        self.local_grad: np.ndarray | None = None
+
+    def forward(self, X):
+        """ Forward propogates from this function """
+        raise NotImplementedError
+
+    def backward(self, grad_z):
+        """ Backward propogates from this function """
+        raise NotImplementedError
+    
+    def update(self):
+        """ Updates the parameters based on gradients """
+        raise NotImplementedError
+    
+    def zero_grad(self):
+        self.local_grad = None
+
+# Main Layers
+class Linear(Module):
+    def __init__(self, in_neurons: int, out_neurons: int):
+        self.in_neurons = in_neurons
+        self.out_neurons = out_neurons
+
+        # Init params (in order of gradients)
+        self.w: np.ndarray = np.zeros(in_neurons)
+        self.b: np.ndarray = np.zeros(out_neurons)
+
+        # Declare what local gradients there are
+        self.grad_w: np.ndarray | None = None
+        self.grad_b: np.ndarray | None = None
+
+        # Initiliaze default with normal distribution
+        self.initialize_parameters(init.normal)
+
+    def initialize_parameters(self, init_method):
+        """ Initializes variables with given init method """
+        init_method(self.w)
+        init_method(self.b)
+
+    def forward(self, X):
+        self.z = X @ self.w + self.b
+
+        # Store the intermediate value for later
+        self.X = X
+
+        # Return the propogated value
+        return self.z
+    
+    def backward(self, grad_z: np.ndarray):
+        # Get dz/dx
+        self.local_grad = self.w.T
+
+        # Get local gradients (use to update later)
+        self.grad_w = self.X.T * grad_z
+        self.grad_b = np.sum(grad_z, axis=0)
+
+        # Multiply local grad by upstream grad to get downstream grad
+        return grad_z @ self.local_grad
+    
+    def update(self, w, b):
+        """ Actual update calculations are determined by optimizer """
+        self.w = w
+        self.b = b
+
+    def zero_grad(self):
+        super().zero_grad()
+
+        self.grad_w = 0
+        self.grad_b = 0
+
+# Activation Functions
+class ReLU(Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, X):
+        self.X = X
+        self.z = np.maximum(0,X) # Compute the ReLU function
+        return self.z
+    
+    def backward(self, grad_z):
+        # Create a mask for gradients
+        self.local_grad = (self.X > 0).astype(np.int8)
+        
+        # Multiply local grad * upstream grad to get downstream grad (elementwise mult)
+        return grad_z * self.local_grad
+
+class Sigmoid(Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, X):
+        # Save the input for later
+        self.X = X
+
+        # Calculate the sigmoid
+        self.z = 1 / (1 + np.exp(-X))
+
+        # Return the value
+        return self.z
+
+    def backward(self, grad_z):
+        # Calculate the local gradient for softmax
+        self.local_grad = self.z * (1 - self.z)
+
+        # Multiple local grad + upstream gradient to get downstream (element wise)
+        return grad_z * self.local_grad
