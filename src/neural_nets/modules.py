@@ -2,6 +2,18 @@ import numpy as np
 import param_init as init
 
 # Implementation inspired by PyTorch
+
+# Have a class that isolates parameter weights and updates
+class Parameter:
+    def __init__(self, value: np.ndarray, name=""):
+        self.name = name
+        self.value = value
+
+        # For gradient
+        self.grad: np.ndarray | None = None
+
+        # Any other variables required for optimizatin will be defined by the optimizer
+
 class Module:
     def __init__(self):
         # Keep these intermediates for each module
@@ -17,9 +29,9 @@ class Module:
         """ Backward propogates from this function """
         raise NotImplementedError
     
-    def update(self):
-        """ Updates the parameters based on gradients """
-        raise NotImplementedError
+    def get_params(self) -> list[Parameter]:
+        """ Return all the parameters for optimization """
+        return []
     
     def zero_grad(self):
         self.local_grad = None
@@ -31,23 +43,19 @@ class Linear(Module):
         self.out_neurons = out_neurons
 
         # Init params (in order of gradients)
-        self.w: np.ndarray = np.zeros(in_neurons)
-        self.b: np.ndarray = np.zeros(out_neurons)
-
-        # Declare what local gradients there are
-        self.grad_w: np.ndarray | None = None
-        self.grad_b: np.ndarray | None = None
+        self.w: Parameter = Parameter(np.zeros(in_neurons), "w")
+        self.b: Parameter = Parameter(np.zeros(out_neurons), "b")
 
         # Initiliaze default with normal distribution
         self.initialize_parameters(init.normal)
 
     def initialize_parameters(self, init_method):
         """ Initializes variables with given init method """
-        init_method(self.w)
-        init_method(self.b)
+        init_method(self.w.value)
+        init_method(self.b.value)
 
     def forward(self, X):
-        self.z = X @ self.w + self.b
+        self.z = X @ self.w.value + self.b
 
         # Store the intermediate value for later
         self.X = X
@@ -57,25 +65,23 @@ class Linear(Module):
     
     def backward(self, grad_z: np.ndarray):
         # Get dz/dx
-        self.local_grad = self.w.T
+        self.local_grad = self.w.value.T
 
         # Get local gradients (use to update later)
-        self.grad_w = self.X.T * grad_z
-        self.grad_b = np.sum(grad_z, axis=0)
+        self.w.grad = self.X.T * grad_z
+        self.b.grad = np.sum(grad_z, axis=0)
 
         # Multiply local grad by upstream grad to get downstream grad
         return grad_z @ self.local_grad
     
-    def update(self, w, b):
-        """ Actual update calculations are determined by optimizer """
-        self.w = w
-        self.b = b
+    def get_param_dict(self) -> list[Parameter]:
+        return [self.w, self.b]
 
     def zero_grad(self):
         super().zero_grad()
 
-        self.grad_w = 0
-        self.grad_b = 0
+        self.w.grad = None
+        self.b.grad = None
 
 # Activation Functions
 class ReLU(Module):
