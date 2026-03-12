@@ -3,8 +3,8 @@ import numpy as np
 class DataLoader:
     def __init__(self, data: np.ndarray, labels: np.ndarray, batch_size: int):
         # Store data and labels
-        self.all_data = data
-        self.all_labels = labels
+        self._all_data = data
+        self._all_labels = labels
 
         self.data_size = len(data)
         self.batch_size = batch_size
@@ -41,8 +41,8 @@ class DataLoader:
             end_idx = self.pointer + self.batch_size
 
         batch_indices = self.indices[self.pointer:end_idx]
-        self.data = self.all_data[batch_indices]
-        self.labels = self.all_labels[batch_indices]
+        self.data = self._all_data[batch_indices]
+        self.labels = self._all_labels[batch_indices]
 
         self.pointer = end_idx
         return True

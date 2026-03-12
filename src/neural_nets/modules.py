@@ -58,7 +58,7 @@ class Linear(Module):
         init_method(self.b.value)
 
     def forward(self, X):
-        self.z = X @ self.w.value + self.b
+        self.z = X @ self.w.value + self.b.value
 
         # Store the intermediate value for later
         self.X = X
@@ -67,27 +67,27 @@ class Linear(Module):
         return self.z
     
     def predict(self, X):
-        return X @ self.w.value + self.b
+        return X @ self.w.value + self.b.value
     
     def backward(self, grad_z: np.ndarray):
         # Get dz/dx
         self.local_grad = self.w.value.T
 
         # Get local gradients (use to update later)
-        self.w.grad = self.X.T * grad_z
+        self.w.grad = self.X.T @ grad_z
         self.b.grad = np.sum(grad_z, axis=0)
 
         # Multiply local grad by upstream grad to get downstream grad
         return grad_z @ self.local_grad
     
-    def get_param_dict(self) -> list[Parameter]:
+    def get_params(self) -> list[Parameter]:
         return [self.w, self.b]
 
     def zero_grad(self):
         super().zero_grad()
 
-        self.w.grad = None
-        self.b.grad = None
+        self.w.grad = np.zeros_like(self.w.value)
+        self.b.grad = np.zeros_like(self.b.value)
 
 # Activation Functions
 class ReLU(Module):
