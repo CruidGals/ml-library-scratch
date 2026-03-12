@@ -24,6 +24,9 @@ class Module:
     def forward(self, X):
         """ Forward propogates from this function """
         raise NotImplementedError
+    
+    def predict(self, X):
+        """ Forward propogation but don't save intermediates """
 
     def backward(self, grad_z):
         """ Backward propogates from this function """
@@ -43,7 +46,7 @@ class Linear(Module):
         self.out_neurons = out_neurons
 
         # Init params (in order of gradients)
-        self.w: Parameter = Parameter(np.zeros(in_neurons), "w")
+        self.w: Parameter = Parameter(np.zeros((in_neurons, out_neurons)), "w")
         self.b: Parameter = Parameter(np.zeros(out_neurons), "b")
 
         # Initiliaze default with normal distribution
@@ -62,6 +65,9 @@ class Linear(Module):
 
         # Return the propogated value
         return self.z
+    
+    def predict(self, X):
+        return X @ self.w.value + self.b
     
     def backward(self, grad_z: np.ndarray):
         # Get dz/dx
@@ -92,6 +98,9 @@ class ReLU(Module):
         self.X = X
         self.z = np.maximum(0,X) # Compute the ReLU function
         return self.z
+
+    def predict(self, X):
+        return np.maximum(0,X)
     
     def backward(self, grad_z):
         # Create a mask for gradients
@@ -113,6 +122,9 @@ class Sigmoid(Module):
 
         # Return the value
         return self.z
+    
+    def predict(self, X):
+        return 1 / (1 + np.exp(-X))
 
     def backward(self, grad_z):
         # Calculate the local gradient for softmax
