@@ -42,7 +42,7 @@ class Module:
 # Main Layers
 class Linear(Module):
     def __init__(self, in_neurons: int, out_neurons: int):
-        super.__init__()
+        super().__init__()
         
         self.in_neurons = in_neurons
         self.out_neurons = out_neurons
@@ -93,7 +93,7 @@ class Linear(Module):
 
 class Conv2D(Module):
     def __init__(self, input_size: np.ndarray, in_channels: int, out_channels: int, kernel_size: np.ndarray, stride: np.ndarray = np.array([1,1]), padding: np.ndarray = np.zeros(2)):
-        super.__init__()
+        super().__init__()
 
         self.input_size = input_size
         self.in_channels = in_channels
@@ -198,13 +198,6 @@ class Conv2D(Module):
                 X_sub = X_padded[:, np.newaxis, :, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1]]
                 self.kernels.grad += np.einsum('bijk,bo->oijk', X_sub, grad_z[:, :, i, j])
 
-                # self.kernels.grad += np.sum(X_sub * grad_z[:, :, i, j, np.newaxis, np.newaxis, np.newaxis], axis=0)
-
-                # # Copute the local grad
-                # current_patch = scaled_kernels[:, :, :, i, j, :, :]
-                # patch_grad = np.sum(current_patch, axis=1)
-                # padded_local_grad[:, :, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1]] += patch_grad;
-
                 # Better method of computing gradient (saves a ton of ram)
                 patch_grad = np.einsum('oijk,bo->bijk', self.kernels.value, grad_z[:, :, i, j])
                 padded_local_grad[:, :, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1]] += patch_grad
@@ -227,6 +220,102 @@ class Conv2D(Module):
 
         self.kernels.grad = np.zeros_like(self.kernels.value)
         self.b.grad = np.zeros_like(self.b.value)
+
+class MaxPool2D(Module):
+    def __init__(self, kernel_size, stride=np.array([1,1]), padding=np.array([0,0])):
+        super().__init__()
+
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+
+        # To be cached later
+        self.output_size = None
+
+    def forward(self, X: np.ndarray):
+        # Save the output
+        self.X = X
+
+        # Create the padded input (save the shape for backprop)
+        X_padded = np.pad(X, ((0,0), (0,0), (self.padding[0], self.padding[0]), (self.padding[1], self.padding[1])))
+        self.padded_shape = X_padded.shape
+
+        # Calculate output size (if needed)
+        batch_size, c, h, w = X.shape
+
+        if not self.output_size:
+            self.output_size = (c,
+                                int(np.floor((h - self.kernel_size[0] + 2 * self.padding[0] + self.stride[0]) / self.stride[0])),
+                                int(np.floor((w - self.kernel_size[1] + 2 * self.padding[1] + self.stride[1]) / self.stride[1])))
+            
+        # Perform the max pool over all the layers that the kernel passes over
+        self.z = np.zeros((batch_size, self.output_size[0], self.output_size[1], self.output_size[2]))
+        self.max_indices = np.zeros((batch_size, self.output_size[0], self.output_size[1], self.output_size[2]))
+
+        for i in range(self.output_size[1]):
+            for j in range(self.output_size[2]):
+                row_idx = (self.stride[0] * i, self.stride[0] * i + self.kernel_size[0])
+                col_idx = (self.stride[1] * j, self.stride[1] * j + self.kernel_size[1])
+
+                # Perform the 2D max pool (collapse for easy indexing)
+                X_sub = X_padded[:, :, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1]].reshape(batch_size, c, -1)
+                self.max_indices[:, :, i, j] = np.argmax(X_sub, axis=2)
+
+                # Extract max values
+                batch_idx, c_idx = np.indices((batch_size, c))
+                self.z[:, :, i, j] = X_sub[batch_idx, c_idx, self.max_indices[:, :, i, j]]
+                
+        return self.z
+    
+    def predict(self, X: np.ndarray):
+        # Create the padded input
+        X_padded = np.pad(X, ((0,0), (0,0), (self.padding[0], self.padding[0]), (self.padding[1], self.padding[1])))
+
+        # Calculate output size (if needed)
+        batch_size, c, h, w = X.shape
+
+        if not self.output_size:
+            self.output_size = (c,
+                                int(np.floor((h - self.kernel_size[0] + 2 * self.padding[0] + self.stride[0]) / self.stride[0])),
+                                int(np.floor((w - self.kernel_size[1] + 2 * self.padding[1] + self.stride[1]) / self.stride[1])))
+            
+        # Perform the max pool over all the layers that the kernel passes over
+        z = np.zeros((batch_size, self.output_size[0], self.output_size[1], self.output_size[2]))
+
+        for i in range(self.output_size[1]):
+            for j in range(self.output_size[2]):
+                row_idx = (self.stride[0] * i, self.stride[0] * i + self.kernel_size[0])
+                col_idx = (self.stride[1] * j, self.stride[1] * j + self.kernel_size[1])
+
+                # Perform the 2D max pool
+                X_sub = X_padded[:, :, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1]]
+                z[:, :, i, j] = np.max(X_sub, axis=(2,3))
+
+        return z
+
+    def backward(self, grad_z: np.ndarray):
+        # Make a zero initialized padded array
+        self.local_grad = np.zeros(self.padded_shape)
+
+        # Get the rows and cols of where the max number should be
+        max_rows, max_cols = np.unravel_index(self.max_indices.astype(int), self.kernel_size)
+        batch_idx, c_idx = np.indices((self.padded_shape[0], self.padded_shape[1]))
+
+        # Initialize the array with the correct values
+        for i in range(self.output_size[1]):
+            for j in range(self.output_size[2]):
+                # Get the top left corner of stride
+                r = self.stride[0] * i
+                c = self.stride[1] * j
+
+                # Get the correct position of that max value
+                r_pos = r + max_rows[:, :, i, j]
+                c_pos = c + max_cols[:, :, i, j]
+
+                # Update the local gradient array
+                self.local_grad[batch_idx, c_idx, r_pos, c_pos] += grad_z[:, :, i, j]
+
+        return self.local_grad
 
 # Activation Functions
 class ReLU(Module):
