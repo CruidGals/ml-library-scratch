@@ -42,6 +42,8 @@ class Module:
 # Main Layers
 class Linear(Module):
     def __init__(self, in_neurons: int, out_neurons: int):
+        super.__init__()
+        
         self.in_neurons = in_neurons
         self.out_neurons = out_neurons
 
@@ -91,6 +93,8 @@ class Linear(Module):
 
 class Conv2D(Module):
     def __init__(self, input_size: np.ndarray, in_channels: int, out_channels: int, kernel_size: np.ndarray, stride: np.ndarray = np.array([1,1]), padding: np.ndarray = np.zeros(2)):
+        super.__init__()
+
         self.input_size = input_size
         self.in_channels = in_channels
         self.out_channels = out_channels
