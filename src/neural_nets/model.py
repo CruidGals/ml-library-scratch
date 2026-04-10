@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from modules import *
 from optim import *
 from loss import *
@@ -62,6 +63,7 @@ def factor_scheduler(factor):
 
 # Train the model
 for epoch in range(epochs):
+    epoch_start = time.time()
     print(f'Training epoch {epoch + 1}: ', end="")
     train_loss = 0.0
 
@@ -85,8 +87,10 @@ for epoch in range(epochs):
         train_loss += loss.sum()
 
     # Report loss & reset batch
+    epoch_end = time.time()
+    epoch_time = epoch_end - epoch_start
     factor_scheduler(0.95)
-    print(f'Total Loss: {train_loss}')
+    print(f'Total Loss: {train_loss:.4f} | Time: {epoch_time:.2f}s')
     train_loader.reset()
 
 # Check accuracy of model using ENTIRE test dataset
