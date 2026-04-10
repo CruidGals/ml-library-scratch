@@ -316,6 +316,20 @@ class MaxPool2D(Module):
                 self.local_grad[batch_idx, c_idx, r_pos, c_pos] += grad_z[:, :, i, j]
 
         return self.local_grad
+    
+class Flatten(Module):
+    def forward(self, X: np.ndarray):
+        # Save the input
+        self.input_shape = X.shape
+        return X.reshape(self.input_shape[0], -1)
+    
+    def predict(self, X):
+        return X.reshape(X.shape[0], -1)
+    
+    def backward(self, grad_z: np.ndarray):
+        # Just simply restore the shape
+        return grad_z.reshape(self.input_shape)
+        
 
 # Activation Functions
 class ReLU(Module):
