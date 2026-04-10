@@ -13,9 +13,9 @@ import tensorflow as tf
 num_classes = 10
 (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
 
-# Flatten the data + make labels one-hot
-train_images: np.ndarray = train_images.reshape(60000, -1)
-test_images: np.ndarray = test_images.reshape(10000, -1)
+# Reshape to (batch_size, channels, height, width) for Conv2D
+train_images: np.ndarray = train_images.reshape(60000, 1, 28, 28)
+test_images: np.ndarray = test_images.reshape(10000, 1, 28, 28)
 
 # Print the shape of the data to verify
 print("Training data shape:", train_images.shape)
@@ -25,19 +25,40 @@ train_labels = np.eye(num_classes)[train_labels].astype(np.int8)
 test_labels = np.eye(num_classes)[test_labels].astype(np.int8)
 
 # Declare hyperparameters
-epochs = 20
-learning_rate = 0.001
-input_size = 784
+epochs = 100
+learning_rate = 0.0005
+stop_factor_lr = 0.000001
 output_size = 10
 batch_size = 256
 
 # Initialize dataloaders
 train_loader = DataLoader(train_images, train_labels, batch_size)
 
-# Define the model, optimizer, loss
-modules = [Linear(input_size, 128), ReLU(), Linear(128, output_size)]
+# Define the LeNet-style model
+# Input: 28x28x1 
+# Conv2D(1->6, 5x5) -> ReLU -> MaxPool2D(2x2) = 12x12x6
+# Conv2D(6->16, 5x5) -> ReLU -> MaxPool2D(2x2) = 4x4x16 (256 features)
+# Flatten -> Linear(256, 120) -> ReLU -> Linear(120, 84) -> ReLU -> Linear(84, 10)
+modules = [
+    Conv2D(np.array([28, 28]), 1, 6, np.array([5, 5]), np.array([1, 1]), np.array([0, 0])),
+    ReLU(),
+    MaxPool2D(np.array([2, 2]), np.array([2, 2]), np.array([0, 0])),
+    Conv2D(np.array([12, 12]), 6, 16, np.array([5, 5]), np.array([1, 1]), np.array([0, 0])),
+    ReLU(),
+    MaxPool2D(np.array([2, 2]), np.array([2, 2]), np.array([0, 0])),
+    Flatten(),
+    Linear(256, 120),
+    ReLU(),
+    Linear(120, 84),
+    ReLU(),
+    Linear(84, output_size)
+]
 loss_fn = CrossEntropyLoss(modules)
-optim = Adam(modules, learning_rate=learning_rate, weight_decay=0.001)
+optim = Adam(modules, learning_rate=learning_rate, weight_decay=0.0001)
+
+# Define learning rate scheduler
+def factor_scheduler(factor):
+    optim.lr = max(stop_factor_lr, optim.lr * factor)
 
 # Train the model
 for epoch in range(epochs):
@@ -64,6 +85,7 @@ for epoch in range(epochs):
         train_loss += loss.sum()
 
     # Report loss & reset batch
+    factor_scheduler(0.95)
     print(f'Total Loss: {train_loss}')
     train_loader.reset()
 

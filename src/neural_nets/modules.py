@@ -113,7 +113,7 @@ class Conv2D(Module):
 
         # Make a weights vector same as kernel size + size is (out_channel, in_channel, kernel_height, kernel_width)
         self.kernels = Parameter(np.zeros((out_channels, in_channels, kernel_size[0], kernel_size[1])), "k")
-        self.b = Parameter((self.out_channels, 1, 1), "b")
+        self.b = Parameter(np.zeros((self.out_channels, 1, 1)), "b")
 
         # Initiliaze default with normal distribution
         self.initialize_parameters(init.normal)
@@ -157,7 +157,7 @@ class Conv2D(Module):
                 X_sub = X_padded[:, :, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1]]
 
                 # Compute convolution and save to Z
-                Z[:,:,i,j] = np.tensordot(X_sub, self.kernels, axes=([1, 2, 3], [1, 2, 3]))
+                Z[:,:,i,j] = np.tensordot(X_sub, self.kernels.value, axes=([1, 2, 3], [1, 2, 3]))
 
         return Z
 
@@ -180,7 +180,7 @@ class Conv2D(Module):
 
         # Compute the intermediates for local gradient
         grad_z_exp = grad_z[:, :, np.newaxis, :, :, np.newaxis, np.newaxis]
-        kernels_exp = self.kernels[np.newaxis, :, :, np.newaxis, np.newaxis, :, :]
+        kernels_exp = self.kernels.value[np.newaxis, :, :, np.newaxis, np.newaxis, :, :]
         scaled_kernels = grad_z_exp * kernels_exp # Shape is (batch, out, in, out_h, out_w, k_h, k_w)
 
         # Add them in correctly during the loop of kernel gradient
@@ -195,7 +195,7 @@ class Conv2D(Module):
                 col_idx = (self.stride[1] * j, self.stride[1] * j + self.kernel_size[1])
 
                 # Compute the gradient at those specific set of inputs
-                X_sub = X_padded[:, np.newaxis, :, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1]]
+                X_sub = X_padded[:, :, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1]]
                 self.kernels.grad += np.einsum('bijk,bo->oijk', X_sub, grad_z[:, :, i, j])
 
                 # Better method of computing gradient (saves a ton of ram)
@@ -207,7 +207,7 @@ class Conv2D(Module):
         w_slice = slice(self.padding[1], -self.padding[1]) if self.padding[1] > 0 else slice(None)
         self.local_grad = padded_local_grad[:, :, h_slice, w_slice]
 
-        self.b.grad = np.sum(grad_z, axis=(0,2,3))
+        self.b.grad = np.sum(grad_z, axis=(0,2,3)).reshape(self.out_channels, 1, 1)
 
         return self.local_grad
     
@@ -263,7 +263,7 @@ class MaxPool2D(Module):
 
                 # Extract max values
                 batch_idx, c_idx = np.indices((batch_size, c))
-                self.z[:, :, i, j] = X_sub[batch_idx, c_idx, self.max_indices[:, :, i, j]]
+                self.z[:, :, i, j] = X_sub[batch_idx, c_idx, self.max_indices[:, :, i, j].astype(int)]
                 
         return self.z
     
