@@ -35,6 +35,14 @@ class Module:
     def get_params(self) -> list[Parameter]:
         """ Return all the parameters for optimization """
         return []
+
+    def load_params(self, params):
+        """ Load parameters into the module """
+
+    # For information purposes
+    def get_info(self) -> dict:
+        """ Get the information of the module """
+        raise NotImplementedError
     
     def zero_grad(self):
         self.local_grad = None
@@ -84,6 +92,22 @@ class Linear(Module):
     
     def get_params(self) -> list[Parameter]:
         return [self.w, self.b]
+
+    def load_params(self, params: dict):
+        # Make sure that parameters are in right form
+        assert params["w"].shape == (self.in_neurons, self.out_neurons), "Weights must be in the shape of (in_neurons, out_neurons)"
+        assert params["b"].shape == self.out_neurons, "Biases must be in the shape of (out_neurons,)"
+
+        # Load in the parameters
+        self.w.value = params["w"]
+        self.b.value = params["b"]
+
+    def get_info(self) -> dict:
+        return {
+            "name": "Linear",
+            "in_neurons": self.in_neurons,
+            "out_neurons": self.out_neurons
+        }
 
     def zero_grad(self):
         super().zero_grad()
@@ -214,7 +238,27 @@ class Conv2D(Module):
     def get_params(self) -> list[Parameter]:
         """ Return all the parameters for optimization """
         return [self.kernels, self.b]
-    
+
+    def load_params(self, params: dict):
+        # Make sure that parameters are in right form
+        assert params["k"].shape == (self.out_channels, self.in_channels, self.kernel_size[0], self.kernel_size[1]), "Kernels must be in the shape of (out_channels, in_channels, kernel_size[0], kernel_size[1])"
+        assert params["b"].shape == (self.out_channels, 1, 1), "Biases must be in the shape of (out_channels, 1, 1)"
+
+        # Load in the parameters
+        self.kernels.value = params["k"]
+        self.b.value = params["b"]
+
+    def get_info(self) -> dict:
+        return {
+            "name": "Conv2D",
+            "input_size": self.input_size,
+            "in_channels": self.in_channels,
+            "out_channels": self.out_channels,
+            "kernel_size": self.kernel_size,
+            "stride": self.stride,
+            "padding": self.padding
+        }
+
     def zero_grad(self):
         self.local_grad = None
 
@@ -317,6 +361,14 @@ class MaxPool2D(Module):
 
         return self.local_grad
     
+    def get_info(self) -> dict:
+        return {
+            "name": "MaxPool2D",
+            "kernel_size": self.kernel_size,
+            "stride": self.stride,
+            "padding": self.padding
+        }
+
 class Flatten(Module):
     def forward(self, X: np.ndarray):
         # Save the input
@@ -351,6 +403,11 @@ class ReLU(Module):
         # Multiply local grad * upstream grad to get downstream grad (elementwise mult)
         return grad_z * self.local_grad
 
+    def get_info(self) -> dict:
+        return {
+            "name": "ReLU"
+        }
+
 class Sigmoid(Module):
     def __init__(self):
         super().__init__()
@@ -374,3 +431,8 @@ class Sigmoid(Module):
 
         # Multiple local grad + upstream gradient to get downstream (element wise)
         return grad_z * self.local_grad
+
+    def get_info(self) -> dict:
+        return {
+            "name": "Sigmoid"
+        }
