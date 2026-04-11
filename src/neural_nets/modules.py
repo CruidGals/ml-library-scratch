@@ -436,3 +436,31 @@ class Sigmoid(Module):
         return {
             "name": "Sigmoid"
         }
+
+class Dropout(Module):
+    def __init__(self, p: float):
+        super().__init__()
+        self.p = p
+        self.keep_prob = 1 - self.p
+
+        # Save a generator
+        self.rng = np.random.default_rng()
+
+    def forward(self, X: np.ndarray):
+        # Create a mask for the dropout
+        self.mask = self.rng.binomial(1, self.keep_prob, X.shape)
+
+        # Scale output (inverted dropout)
+        return (X * self.mask) / self.keep_prob
+    
+    def predict(self, X: np.ndarray):
+        return X
+    
+    def backward(self, grad_z: np.ndarray):
+        return (grad_z * self.mask) / self.keep_prob
+    
+    def get_info(self) -> dict:
+        return {
+            "name": "Dropout", 
+            "p": self.p
+        }
