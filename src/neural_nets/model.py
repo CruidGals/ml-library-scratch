@@ -4,6 +4,7 @@ from modules import *
 from optim import *
 from loss import *
 from dataloaders import DataLoader
+from util import *
 
 # Initialize random num generator
 rng = np.random.default_rng()
@@ -105,3 +106,7 @@ true_indices = np.argmax(test_labels, axis=1)
 accuracy = np.mean(pred_indices == true_indices)
 
 print(f'Test Accuracy: {accuracy:.2%}')
+
+# Save the model
+save_state_dict(modules, "saved/model.npz")
+get_modules_info(modules, "saved/model.yaml")
