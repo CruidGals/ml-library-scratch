@@ -47,6 +47,30 @@ class Module:
     def zero_grad(self):
         self.local_grad = None
 
+    # For convolutional layers only
+    def col2im(self, grad_col, grad_z_shape):
+        """ Folds 2D column gradients back into a 4D image tensor. """
+
+        assert isinstance(self, Conv2D) or isinstance(self, MaxPool2D), "col2im is only available for convolutional and max pool layers"
+
+        batch_size, _, out_h, out_w = grad_z_shape
+        # Skip calculating H_pad/W_pad; just use the forward-pass cache
+        # Use float buffer: X_padded may be integer (e.g. uint8 images) but grads are float
+        dX_padded = np.zeros(self.X_padded.shape, dtype=np.result_type(self.X_padded.dtype, grad_col.dtype))
+        
+        # Reshape columns back to (N, out_h, out_w, C_in, k_h, k_w)
+        gp = grad_col.reshape(batch_size, out_h, out_w, -1, *self.kernel_size)
+
+        # Flatten the nested kernel loops into one iterator
+        for i, j in np.ndindex(*self.kernel_size):
+            # Slicing logic: Start at (i, j), step by stride, take exactly out_h/w steps
+            # This aligns the (N, C, out_h, out_w) patches back to the padded image
+            dX_padded[:, :, i : i + out_h * self.stride[0] : self.stride[0], j : j + out_w * self.stride[1] : self.stride[1]] += gp[..., i, j].transpose(0, 3, 1, 2)
+
+        # Remove the rest of the padding
+        p = self.padding[0]
+        return dX_padded[:, :, p:-p, p:-p] if p > 0 else dX_padded
+
 # Main Layers
 class Linear(Module):
     def __init__(self, in_neurons: int, out_neurons: int):
@@ -214,25 +238,6 @@ class Conv2D(Module):
         self.b.grad = np.sum(grad_z, axis=(0,2,3)).reshape(self.out_channels, 1, 1)
 
         return self.col2im(self.local_grad, grad_z.shape)
-
-    def col2im(self, grad_col, grad_z_shape):
-        """ Folds 2D column gradients back into a 4D image tensor. """
-        batch_size, _, out_h, out_w = grad_z_shape
-        # Skip calculating H_pad/W_pad; just use the forward-pass cache
-        dX_padded = np.zeros_like(self.X_padded)
-        
-        # Reshape columns back to (N, out_h, out_w, C_in, k_h, k_w)
-        gp = grad_col.reshape(batch_size, out_h, out_w, -1, *self.kernel_size)
-
-        # Flatten the nested kernel loops into one iterator
-        for i, j in np.ndindex(*self.kernel_size):
-            # Slicing logic: Start at (i, j), step by stride, take exactly out_h/w steps
-            # This aligns the (N, C, out_h, out_w) patches back to the padded image
-            dX_padded[:, :, i : i + out_h * self.stride[0] : self.stride[0], j : j + out_w * self.stride[1] : self.stride[1]] += gp[..., i, j].transpose(0, 3, 1, 2)
-
-        # Remove the rest of the padding
-        p = self.padding[0]
-        return dX_padded[:, :, p:-p, p:-p] if p > 0 else dX_padded
     
     def get_params(self) -> list[Parameter]:
         """ Return all the parameters for optimization """
@@ -280,12 +285,11 @@ class MaxPool2D(Module):
         self.X = X
 
         # Create the padded input (save the shape for backprop)
-        X_padded = np.pad(X, ((0,0), (0,0), (self.padding[0], self.padding[0]), (self.padding[1], self.padding[1])))
-        self.padded_shape = X_padded.shape
-            
+        self.X_padded = np.pad(X, ((0,0), (0,0), (self.padding[0], self.padding[0]), (self.padding[1], self.padding[1])))
+
         # Perform the max pool over all the layers that the kernel passes over
         # Use im2col technique again to make (batch_size, in_channels, out_h, out_w, kernel_height * kernel_width)
-        patches = np.lib.stride_tricks.sliding_window_view(X_padded, window_shape=(self.kernel_size[0], self.kernel_size[1]), axis=(2, 3))
+        patches = np.lib.stride_tricks.sliding_window_view(self.X_padded, window_shape=(self.kernel_size[0], self.kernel_size[1]), axis=(2, 3))
         patches = patches[:, :, ::self.stride[0], ::self.stride[1]]
 
         # Flatten the last two axis (kernel ones) and find the max of those
@@ -332,25 +336,6 @@ class MaxPool2D(Module):
         grad_col = grad_patches.transpose(0, 2, 3, 1, 4).reshape(batch_size, out_h, out_w, -1)
         
         return self.col2im(grad_col, grad_z.shape)
-
-    def col2im(self, grad_col, grad_z_shape):
-        """ Folds 2D column gradients back into a 4D image tensor. """
-        batch_size, _, out_h, out_w = grad_z_shape
-        # Skip calculating H_pad/W_pad; just use the forward-pass cache
-        dX_padded = np.zeros(self.padded_shape)
-        
-        # Reshape columns back to (N, out_h, out_w, C_in, k_h, k_w)
-        gp = grad_col.reshape(batch_size, out_h, out_w, -1, *self.kernel_size)
-
-        # Flatten the nested kernel loops into one iterator
-        for i, j in np.ndindex(*self.kernel_size):
-            # Slicing logic: Start at (i, j), step by stride, take exactly out_h/w steps
-            # This aligns the (N, C, out_h, out_w) patches back to the padded image
-            dX_padded[:, :, i : i + out_h * self.stride[0] : self.stride[0], j : j + out_w * self.stride[1] : self.stride[1]] += gp[..., i, j].transpose(0, 3, 1, 2)
-
-        # Remove the rest of the padding
-        p = self.padding[0]
-        return dX_padded[:, :, p:-p, p:-p] if p > 0 else dX_padded
     
     def get_info(self) -> dict:
         return {

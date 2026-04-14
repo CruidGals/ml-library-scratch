@@ -15,6 +15,10 @@ import tensorflow as tf
 num_classes = 10
 (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
 
+# Scale pixel values to a range of 0 to 1
+train_images = train_images / 255.0
+test_images = test_images / 255.0
+
 # Reshape to (batch_size, channels, height, width) for Conv2D
 train_images: np.ndarray = train_images.reshape(60000, 1, 28, 28)
 test_images: np.ndarray = test_images.reshape(10000, 1, 28, 28)

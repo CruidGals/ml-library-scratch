@@ -1,5 +1,6 @@
 import numpy as np
 import yaml
+from modules import Module
 
 def get_state_dict(model: list[Module]) -> dict:
     """ Save the parameters of the model to a file """
