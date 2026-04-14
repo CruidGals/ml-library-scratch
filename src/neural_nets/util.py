@@ -1,5 +1,6 @@
 import numpy as np
 import yaml
+import os
 from modules import Module
 
 def get_state_dict(model: list[Module]) -> dict:
@@ -17,11 +18,13 @@ def get_state_dict(model: list[Module]) -> dict:
 def save_state_dict(model: list[Module], file_path: str) -> None:
     """ Save the parameters of the model to a file """
     state_dict = get_state_dict(model)
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     np.save(file_path, state_dict)
 
 def load_state_dict(modules: list[Module], file_path: str) -> None:
     """ Load the parameters of the model from a file """
     # Load the state dictionary
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     state_dict = np.load(file_path, allow_pickle=True).item()
 
     # Load the parameters for each module
@@ -36,11 +39,13 @@ def get_modules_info(model: list[Module], file_path: str) -> None:
     for module in model:
         module_info["modules"].append(module.get_info())
 
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'w') as f:
         yaml.dump(module_info, f)
 
 def load_modules_info(file_path: str) -> list[Module]:
     """ Load the information of the modules from a yaml file """
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'r') as f:
         module_info = yaml.load(f, Loader=yaml.FullLoader)
 
