@@ -357,6 +357,11 @@ class Flatten(Module):
     def backward(self, grad_z: np.ndarray):
         # Just simply restore the shape
         return grad_z.reshape(self.input_shape)
+
+    def get_info(self) -> dict:
+        return {
+            "name": "Flatten"
+        }
         
 
 # Activation Functions
