@@ -1,0 +1,58 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1776145250.522235    5116 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1776145251.875805    5116 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+Training data shape: (60000, 1, 28, 28)
+Testing data shape: (10000, 1, 28, 28)
+Training epoch 1: Total Loss: 59301.2901 | Time: 14.97s
+Training epoch 2: Total Loss: 9954.8558 | Time: 15.50s
+Training epoch 3: Total Loss: 6346.1776 | Time: 15.93s
+Training epoch 4: Total Loss: 4824.7241 | Time: 16.25s
+Training epoch 5: Total Loss: 3968.5702 | Time: 13.43s
+Training epoch 6: Total Loss: 3359.8497 | Time: 13.44s
+Training epoch 7: Total Loss: 3001.9667 | Time: 13.39s
+Training epoch 8: Total Loss: 2581.1426 | Time: 13.38s
+Training epoch 9: Total Loss: 2226.4266 | Time: 13.40s
+Training epoch 10: Total Loss: 2171.2132 | Time: 13.39s
+Training epoch 11: Total Loss: 1814.6324 | Time: 13.88s
+Training epoch 12: Total Loss: 1672.6808 | Time: 14.41s
+Training epoch 13: Total Loss: 1550.3757 | Time: 14.55s
+Training epoch 14: Total Loss: 1436.7188 | Time: 13.45s
+Training epoch 15: Total Loss: 1302.7788 | Time: 13.39s
+Training epoch 16: Total Loss: 1145.2968 | Time: 13.41s
+Training epoch 17: Total Loss: 1197.2147 | Time: 13.42s
+Training epoch 18: Total Loss: 1090.8772 | Time: 14.79s
+Training epoch 19: Total Loss: 928.3783 | Time: 15.58s
+Training epoch 20: Total Loss: 919.5858 | Time: 15.81s
+Training epoch 21: Total Loss: 843.9998 | Time: 15.53s
+Training epoch 22: Total Loss: 780.2563 | Time: 14.40s
+Training epoch 23: Total Loss: 730.6396 | Time: 13.86s
+Training epoch 24: Total Loss: 617.9094 | Time: 14.00s
+Training epoch 25: Total Loss: 546.9131 | Time: 13.96s
+Training epoch 26: Total Loss: 591.1508 | Time: 13.92s
+Training epoch 27: Total Loss: 519.9399 | Time: 13.82s
+Training epoch 28: Total Loss: 634.2219 | Time: 13.79s
+Training epoch 29: Total Loss: 520.2549 | Time: 13.85s
+Training epoch 30: Total Loss: 496.9447 | Time: 13.91s
+Training epoch 31: Total Loss: 414.0087 | Time: 13.88s
+Training epoch 32: Total Loss: 374.8873 | Time: 14.11s
+Training epoch 33: Total Loss: 364.4423 | Time: 13.88s
+Training epoch 34: Total Loss: 424.7144 | Time: 13.90s
+Training epoch 35: Total Loss: 349.0177 | Time: 13.96s
+Training epoch 36: Total Loss: 352.9322 | Time: 13.86s
+Training epoch 37: Total Loss: 224.3147 | Time: 13.97s
+Training epoch 38: Total Loss: 312.1764 | Time: 14.33s
+Training epoch 39: Total Loss: 386.9305 | Time: 13.96s
+Training epoch 40: Total Loss: 287.1767 | Time: 13.94s
+Training epoch 41: Total Loss: 207.9791 | Time: 13.89s
+Training epoch 42: Total Loss: 188.7797 | Time: 13.88s
+Training epoch 43: Total Loss: 141.5979 | Time: 13.86s
+Training epoch 44: Total Loss: 182.1564 | Time: 13.98s
+Training epoch 45: Total Loss: 300.6287 | Time: 13.94s
+Training epoch 46: Total Loss: 273.9158 | Time: 13.85s
+Training epoch 47: Total Loss: 196.3150 | Time: 13.85s
+Training epoch 48: Total Loss: 116.0976 | Time: 13.87s
+Training epoch 49: Total Loss: 153.2243 | Time: 13.84s
+Training epoch 50: Total Loss: 197.9660 | Time: 13.90s
+Test Accuracy: 99.07%
+Total Time: 705.46 seconds

@@ -31,11 +31,12 @@ train_labels = np.eye(num_classes)[train_labels].astype(np.int8)
 test_labels = np.eye(num_classes)[test_labels].astype(np.int8)
 
 # Declare hyperparameters
-epochs = 100
-learning_rate = 0.0005
-stop_factor_lr = 0.000001
+epochs = 50
+learning_rate = 0.002
+stop_factor_lr = 0.00001
 output_size = 10
 batch_size = 256
+lr_scale_factor = 0.98
 
 # Initialize dataloaders
 train_loader = DataLoader(train_images, train_labels, batch_size)
@@ -94,7 +95,7 @@ for epoch in range(epochs):
     # Report loss & reset batch
     epoch_end = time.time()
     epoch_time = epoch_end - epoch_start
-    factor_scheduler(0.95)
+    factor_scheduler(lr_scale_factor)
     print(f'Total Loss: {train_loss:.4f} | Time: {epoch_time:.2f}s')
     train_loader.reset()
 
