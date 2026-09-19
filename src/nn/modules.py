@@ -67,9 +67,11 @@ class Module:
             # This aligns the (N, C, out_h, out_w) patches back to the padded image
             dX_padded[:, :, i : i + out_h * self.stride[0] : self.stride[0], j : j + out_w * self.stride[1] : self.stride[1]] += gp[..., i, j].transpose(0, 3, 1, 2)
 
-        # Remove the rest of the padding
-        p = self.padding[0]
-        return dX_padded[:, :, p:-p, p:-p] if p > 0 else dX_padded
+        # Remove padding independently on H and W (pad=0 must not use 0:-0, which is empty)
+        ph, pw = int(self.padding[0]), int(self.padding[1])
+        h_slice = slice(ph, -ph) if ph > 0 else slice(None)
+        w_slice = slice(pw, -pw) if pw > 0 else slice(None)
+        return dX_padded[:, :, h_slice, w_slice]
 
 # Main Layers
 class Linear(Module):
