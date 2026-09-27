@@ -22,7 +22,7 @@ class DataLoader:
     def reset(self):
         """ Initializes the pointer for efficient batch selection and indices of each batch """
         self.pointer = 0
-        self.indices = self.rng.choice(self.data_size, self.data_size)
+        self.indices = self.rng.permutation(self.data_size)
 
         self.data = None
         self.labels = None
