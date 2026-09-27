@@ -30,12 +30,22 @@ print("Testing data shape:", test_images.shape)
 train_labels = np.eye(num_classes)[train_labels].astype(np.int8)
 test_labels = np.eye(num_classes)[test_labels].astype(np.int8)
 
+# Hold out 10% of the training examples for validation.
+split_indices = rng.permutation(len(train_images))
+validation_size = int(0.1 * len(train_images))
+validation_indices = split_indices[:validation_size]
+training_indices = split_indices[validation_size:]
+validation_images = train_images[validation_indices]
+validation_labels = train_labels[validation_indices]
+train_images = train_images[training_indices]
+train_labels = train_labels[training_indices]
+
 # Declare hyperparameters
 epochs = 50
-learning_rate = 0.002
+learning_rate = 0.001
 stop_factor_lr = 0.00001
 output_size = 10
-batch_size = 256
+batch_size = 128
 lr_scale_factor = 0.98
 
 # Initialize dataloaders

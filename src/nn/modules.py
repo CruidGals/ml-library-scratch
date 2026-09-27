@@ -75,7 +75,7 @@ class Module:
 
 # Main Layers
 class Linear(Module):
-    def __init__(self, in_neurons: int, out_neurons: int):
+    def __init__(self, in_neurons: int, out_neurons: int, w_init_method=init.kaiming, b_init_method=None):
         super().__init__()
         
         self.in_neurons = in_neurons
@@ -85,13 +85,11 @@ class Linear(Module):
         self.w: Parameter = Parameter(np.zeros((in_neurons, out_neurons)), "w")
         self.b: Parameter = Parameter(np.zeros(out_neurons), "b")
 
-        # Initiliaze default with normal distribution
-        self.initialize_parameters(init.normal)
-
-    def initialize_parameters(self, init_method):
-        """ Initializes variables with given init method """
-        init_method(self.w.value)
-        init_method(self.b.value)
+        # Initiliaze default with methods
+        if w_init_method:
+            w_init_method(self.w.value)
+        if b_init_method:
+            b_init_method(self.b.value)
 
     def forward(self, X):
         self.z = X @ self.w.value + self.b.value
@@ -142,7 +140,7 @@ class Linear(Module):
         self.b.grad = np.zeros_like(self.b.value)
 
 class Conv2D(Module):
-    def __init__(self, input_size: np.ndarray, in_channels: int, out_channels: int, kernel_size: np.ndarray, stride: np.ndarray = np.array([1,1]), padding: np.ndarray = np.zeros(2)):
+    def __init__(self, input_size: np.ndarray, in_channels: int, out_channels: int, kernel_size: np.ndarray, stride: np.ndarray = np.array([1,1]), padding: np.ndarray = np.zeros(2), k_init_method=init.kaiming, b_init_method=None):
         super().__init__()
 
         self.input_size = input_size
@@ -166,7 +164,10 @@ class Conv2D(Module):
         self.b = Parameter(np.zeros((self.out_channels, 1, 1)), "b")
 
         # Initiliaze default with normal distribution
-        self.initialize_parameters(init.normal)
+        if k_init_method:
+            k_init_method(self.kernels.value)
+        if b_init_method:
+            b_init_method(self.b.value) 
     
     def validate_parameters(self, input_size, kernel_size, stride, padding):
         # Add the padding to input_size
@@ -181,11 +182,6 @@ class Conv2D(Module):
         if kernel_size[0] > padded_input[0] or kernel_size[1] > padded_input[1]:
             # Raise for now
             raise ValueError("Kernel is larger than input size")
-
-    def initialize_parameters(self, init_method):
-        """ Initializes variables with given init method """
-        init_method(self.kernels.value)
-        init_method(self.b.value)
 
     def conv2d(self, X_padded, train=True):
         """ Perform the convolution """
