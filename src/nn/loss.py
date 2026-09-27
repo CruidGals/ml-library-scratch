@@ -16,6 +16,9 @@ class Loss:
         self.preds = preds
         self.labels = labels
 
+    def predict(self, preds, labels):
+        raise NotImplementedError
+
     def backward(self):
         raise NotImplementedError
 
@@ -41,6 +44,22 @@ class CrossEntropyLoss(Loss):
         self.loss = -np.sum(labels * np.log(self.softmax + epsilon), axis=1)
 
         return self.loss
+
+    def predict(self, preds, labels):
+        """ Same as compute function but no values are saved """
+
+        # Stabilize samples
+        shift_preds = preds - np.max(preds, axis=1, keepdims=True)
+
+        # Calculate the softmax
+        exp_preds = np.exp(shift_preds)
+        softmax = exp_preds / np.sum(exp_preds, axis=1, keepdims=True)
+
+        # Compute the loss (use epsilon to avoid log(0) = -inf )
+        epsilon = 1e-12
+        loss = -np.sum(labels * np.log(softmax + epsilon), axis=1)
+
+        return loss
     
     def backward(self):
         # Using saved softmax, compute local gradient

@@ -30,15 +30,13 @@ print("Testing data shape:", test_images.shape)
 train_labels = np.eye(num_classes)[train_labels].astype(np.int8)
 test_labels = np.eye(num_classes)[test_labels].astype(np.int8)
 
-# Hold out 10% of the training examples for validation.
+# Use 10% of the training examples for validation
 split_indices = rng.permutation(len(train_images))
 validation_size = int(0.1 * len(train_images))
 validation_indices = split_indices[:validation_size]
 training_indices = split_indices[validation_size:]
-validation_images = train_images[validation_indices]
-validation_labels = train_labels[validation_indices]
-train_images = train_images[training_indices]
-train_labels = train_labels[training_indices]
+validation_images, validation_labels = train_images[validation_indices], train_labels[validation_indices]
+train_images, train_labels = train_images[training_indices], train_labels[training_indices]
 
 # Declare hyperparameters
 epochs = 50
@@ -50,6 +48,33 @@ lr_scale_factor = 0.98
 
 # Initialize dataloaders
 train_loader = DataLoader(train_images, train_labels, batch_size)
+validation_loader = DataLoader(validation_images, validation_labels, batch_size)
+test_loader = DataLoader(test_images, test_labels, batch_size)
+
+# Evaluate function for validation and test
+def evaluate(modules: list[Module], dataloader: DataLoader):
+    dataloader.reset()
+    total_loss = 0.0
+    correct = 0
+    total_images = 0
+
+    while dataloader.next():
+        data = dataloader.data
+        labels = dataloader.labels
+
+        for module in modules:
+            data = module.predict(data)
+
+        total_loss += loss_fn.predict(data, labels).sum()
+
+        # Get accuracy
+        pred_indices = np.argmax(data, axis=1)
+        true_indices = np.argmax(labels, axis=1)
+
+        correct += np.sum(pred_indices == true_indices)
+        total_images += labels.shape[0]
+
+    return total_loss / total_images, correct / total_images
 
 # Define the LeNet-style model
 # Input: 28x28x1 
@@ -102,25 +127,19 @@ for epoch in range(epochs):
         # Keep track of total loss
         train_loss += loss.sum()
 
+    # Get validation
+    valid_loss, valid_acc = evaluate(modules, validation_loader)
+
     # Report loss & reset batch
     epoch_end = time.time()
     epoch_time = epoch_end - epoch_start
     factor_scheduler(lr_scale_factor)
-    print(f'Total Loss: {train_loss:.4f} | Time: {epoch_time:.2f}s')
+    print(f'Total Loss: {train_loss:.4f} | Time: {epoch_time:.2f}s | Validation Loss: {valid_loss:.4f} | Validation Accuracy: {valid_acc:.2%}')
     train_loader.reset()
 
 # Check accuracy of model using ENTIRE test dataset
-preds = test_images[:]
-for module in modules:
-    preds = module.predict(preds)
-
-# Get predictions (in one_hot form)
-pred_indices = np.argmax(preds, axis=1)
-true_indices = np.argmax(test_labels, axis=1)
-
-accuracy = np.mean(pred_indices == true_indices)
-
-print(f'Test Accuracy: {accuracy:.2%}')
+test_loss, test_acc = evaluate(modules, test_loader)
+print(f'Test Loss: {test_loss:.4f} | Test Accuracy: {test_acc:.2%}')
 
 # Save the model
 save_state_dict(modules, "saved/model.npz")
